@@ -342,6 +342,30 @@
           </a>
         </article>
 
+        <!-- Project 4 -->
+        <article class="group flex flex-col rounded-md border border-line bg-bg p-5 transition-all duration-300 ease-out hover:-translate-y-1 hover:border-amber hover:shadow-[0_8px_30px_-8px_rgba(255,180,84,0.25)]">
+          <div class="flex items-center justify-between">
+            <span class="h-2 w-2 rounded-full bg-green"></span>
+            <span class="font-mono text-[11px] text-ink-faint">log/004</span>
+          </div>
+          <h3 class="mt-4 font-mono text-base font-semibold text-ink">NetSec Forge</h3>
+          <p class="mt-2 flex-1 text-sm leading-relaxed text-ink-muted">
+            One-click Windows setup tool for programming, networking, and cybersecurity work.
+            A single GUI installs grouped packages — dev tools, browsers, networking &amp; security
+            utilities, reverse engineering — no manual PowerShell required.
+          </p>
+          <div class="mt-4 flex flex-wrap gap-2.5">
+            <span class="rounded-sm border border-line bg-bg-panel px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink-muted transition-colors duration-300 group-hover:border-amber-dim/60">--windows</span>
+            <span class="rounded-sm border border-line bg-bg-panel px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink-muted transition-colors duration-300 group-hover:border-amber-dim/60">--dotnet</span>
+            <span class="rounded-sm border border-line bg-bg-panel px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink-muted transition-colors duration-300 group-hover:border-amber-dim/60">--automation</span>
+            <span class="rounded-sm border border-line bg-bg-panel px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink-muted transition-colors duration-300 group-hover:border-amber-dim/60">--security-tools</span>
+          </div>
+          <a href="https://github.com/GLORY-2016/NetSec-Forge" target="_blank" rel="noopener noreferrer"
+             class="mt-5 inline-flex items-center gap-1 font-mono text-[13px] text-amber transition group-hover:gap-2">
+            view_on_github →
+          </a>
+        </article>
+
       </div>
     </div>
   </section>
@@ -426,9 +450,15 @@
 
 <!-- ================= FOOTER ================= -->
 <footer class="border-t border-line">
-  <div class="mx-auto flex max-w-6xl flex-col items-center gap-6 px-5 py-10 sm:flex-row sm:justify-between sm:px-8">
+  <div class="mx-auto flex max-w-6xl flex-col items-center gap-4 px-5 py-10 sm:flex-row sm:justify-between sm:px-8">
 
-    <p class="font-mono text-[12px] text-ink-faint">© 2026 Oussema Nouri — built with intent, not a template.</p>
+    <div class="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+      <p class="font-mono text-[12px] text-ink-faint">© 2026 Oussema Nouri — built with intent, not a template.</p>
+      <span id="visitCounter" class="inline-flex items-center gap-2 rounded-sm border border-line bg-bg-panel px-2.5 py-1 font-mono text-[11px] text-ink-muted">
+        <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+        visitors: <span id="visitCount" class="font-semibold text-amber">—</span>
+      </span>
+    </div>
 
     <div class="flex items-center gap-5">
       <a href="https://github.com/GLORY-2016" aria-label="GitHub" target="_blank" rel="noopener noreferrer"
@@ -479,6 +509,18 @@
       menuBtn.setAttribute('aria-expanded', 'false');
     });
   });
+
+  // Visit counter (CountAPI — free, no signup, public key-based counter)
+  fetch('https://countapi.mileshilliard.com/api/v1/hit/oussemanouri_me_portfolio_visits')
+    .then(res => res.json())
+    .then(data => {
+      const el = document.getElementById('visitCount');
+      if (el && data && data.value !== undefined) el.textContent = data.value;
+    })
+    .catch(() => {
+      const el = document.getElementById('visitCount');
+      if (el) el.textContent = '—';
+    });
 </script>
   <!-- Google Analytics 4 — shows visitor city/country under Reports > Realtime or Demographics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-LS1FVM0YWZ"></script>
