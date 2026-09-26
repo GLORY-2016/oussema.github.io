@@ -90,9 +90,24 @@
   .typeline.d3 { animation-delay: 3.4s; }
   @keyframes typing { from { width: 0; } to { width: 100%; } }
 
+  .scanline {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -20%;
+    height: 18%;
+    background: linear-gradient(to bottom, transparent, rgba(255,180,84,0.45), transparent);
+    animation: scan 3.2s ease-in-out infinite;
+  }
+  @keyframes scan {
+    0% { top: -20%; }
+    100% { top: 110%; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .typeline { animation: none; width: 100%; }
     .caret { animation: none; }
+    .scanline { animation: none; opacity: 0; }
     * { scroll-behavior: auto !important; }
   }
 
@@ -235,8 +250,29 @@
       <p class="font-mono text-[12px] uppercase tracking-widest text-amber">01 — about</p>
       <h2 class="mt-3 font-mono text-2xl font-semibold text-ink sm:text-3xl">Analytical by habit, not by trend.</h2>
 
-      <div class="mt-10 grid gap-10 lg:grid-cols-3">
-        <p class="text-base leading-relaxed text-ink-muted lg:col-span-2">
+      <div class="mt-10 grid gap-10 lg:grid-cols-[200px_1fr_260px] lg:items-start">
+
+        <div class="group mx-auto w-full max-w-[200px] lg:mx-0">
+          <div class="relative overflow-hidden rounded-sm border border-amber-dim/50 bg-bg-panel">
+            <img src="./assets/oussema-photo.jpg" alt="Oussema Nouri"
+                 class="block w-full grayscale contrast-125 brightness-95 transition duration-500 ease-out group-hover:grayscale-0" />
+            <span class="pointer-events-none absolute left-0 top-0 h-5 w-5 border-l-2 border-t-2 border-amber"></span>
+            <span class="pointer-events-none absolute right-0 top-0 h-5 w-5 border-r-2 border-t-2 border-amber"></span>
+            <span class="pointer-events-none absolute bottom-0 left-0 h-5 w-5 border-b-2 border-l-2 border-amber"></span>
+            <span class="pointer-events-none absolute bottom-0 right-0 h-5 w-5 border-b-2 border-r-2 border-amber"></span>
+            <span class="scanline pointer-events-none"></span>
+          </div>
+          <div class="mt-3 rounded-sm border border-line bg-bg-panel px-3 py-2 font-mono text-[11px]">
+            <p class="text-ink-faint">subject</p>
+            <p class="mt-0.5 text-ink">Oussema Nouri</p>
+            <p class="mt-1.5 flex items-center gap-1.5 text-green">
+              <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+              status: verified
+            </p>
+          </div>
+        </div>
+
+        <p class="text-base leading-relaxed text-ink-muted">
           I approach security the way I approach a network diagram: methodically, from the edges in.
           I'm currently in my first year of a BTS in Réseau et Sécurité Informatique, and I'm drawn
           to the quiet, unglamorous parts of the work — mapping an attack surface, tracing a digital
