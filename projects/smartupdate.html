@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>SmartUpdate — Oussema Nouri</title>
+<meta name="description" content="SmartUpdate — a deterministic, vendor-agnostic Windows driver and update discovery engine. Engineering write-up by Oussema Nouri.">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: { DEFAULT: '#0a0e0d', panel: '#0f1513', raised: '#141b19' },
+          line: '#1f2a27',
+          amber: { DEFAULT: '#ffb454', dim: '#8a6a3a' },
+          green: { DEFAULT: '#4ade80', dim: '#2f6b47' },
+          ink: { DEFAULT: '#eaeff0', muted: '#c2cbc8', faint: '#7c8c87' },
+        },
+        fontFamily: {
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+
+<style>
+  html { background-color: #0a0e0d; }
+  body {
+    background-color: #0a0e0d;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  ::selection { background-color: #ffb454; color: #0a0e0d; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #0a0e0d; }
+  ::-webkit-scrollbar-thumb { background: #1f2a27; border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: #2a3733; }
+  a:focus-visible, button:focus-visible { outline: 2px solid #ffb454; outline-offset: 2px; }
+  .pipe-step { white-space: nowrap; }
+</style>
+</head>
+
+<body class="font-sans text-ink antialiased">
+
+<header class="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur supports-[backdrop-filter]:bg-bg/70">
+  <nav class="mx-auto flex max-w-4xl items-center justify-between px-5 py-4 sm:px-8">
+    <a href="../index.html" class="flex items-center gap-2 font-mono text-sm font-semibold tracking-tight text-ink">
+      <span class="text-green">●</span>
+      <span>oussema<span class="text-ink-muted">@</span>nouri<span class="text-amber">:~$</span></span>
+    </a>
+    <a href="../index.html#projects" class="font-mono text-[13px] text-ink-muted transition-colors duration-200 hover:text-amber">
+      ← back_to_portfolio
+    </a>
+  </nav>
+</header>
+
+<main class="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-20">
+
+  <!-- ===== HEADER ===== -->
+  <p class="font-mono text-[12px] uppercase tracking-widest text-amber">project log/005</p>
+  <h1 class="mt-3 font-mono text-3xl font-semibold leading-tight text-ink sm:text-4xl">SmartUpdate</h1>
+  <p class="mt-3 max-w-2xl text-base text-ink-muted sm:text-lg">
+    A deterministic, vendor-agnostic engine for discovering and managing Windows driver and
+    application updates — built around fail-closed safety rules instead of "find a newer driver
+    and install it."
+  </p>
+
+  <div class="mt-6 flex flex-wrap items-center gap-3">
+    <span class="inline-flex items-center gap-2 rounded-sm border border-amber-dim/60 bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-amber">
+      <span class="h-1.5 w-1.5 rounded-full bg-amber"></span>
+      status: actively in development — not finished software
+    </span>
+    <a href="https://github.com/GLORY-2016/SmartUpdate" target="_blank" rel="noopener noreferrer"
+       class="inline-flex items-center gap-2 rounded-sm bg-amber px-4 py-1.5 font-mono text-[12px] font-semibold text-bg transition hover:bg-amber/90">
+      view_source_on_github →
+    </a>
+  </div>
+
+  <!-- ===== WHY ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Why I built this</h2>
+    <p class="mt-4 leading-relaxed text-ink-muted">
+      Most "update tools" treat a Windows update as one step: find something newer, install it.
+      I wanted to pull that apart. Knowing what hardware is actually on a machine, where a driver
+      candidate came from, whether it's really compatible, whether its version evidence is trustworthy,
+      whether the package itself is valid, whether installing it was authorized, and whether the
+      install actually worked afterward — those are different questions with different ways of
+      failing. SmartUpdate keeps them separate, and when the evidence for one of those questions is
+      missing, it fails closed rather than guessing.
+    </p>
+  </section>
+
+  <!-- ===== PIPELINE ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">How it's structured</h2>
+    <p class="mt-4 leading-relaxed text-ink-muted">The intended flow runs through nine distinct stages:</p>
+
+    <div class="mt-6 overflow-x-auto rounded-md border border-line bg-bg-panel p-5">
+      <div class="flex min-w-max items-center gap-2 font-mono text-[12px] text-ink">
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Inventory</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Discovery</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Candidate normalization</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Compatibility matching</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Update decision</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Risk / intelligence</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Acquisition &amp; validation</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-line bg-bg px-3 py-1.5">Installation</span>
+        <span class="text-amber">→</span>
+        <span class="pipe-step rounded-sm border border-amber-dim bg-bg px-3 py-1.5 text-amber">Recovery</span>
+      </div>
+    </div>
+    <p class="mt-3 text-sm text-ink-faint">
+      The first seven stages exist in the current code, though not every source or package type is
+      complete yet. Recovery is kept as its own boundary and currently refuses any unsupported
+      generic rollback rather than pretending it can undo something it can't.
+    </p>
+  </section>
+
+  <!-- ===== SAFETY RULES ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">The rules it won't break</h2>
+    <p class="mt-4 leading-relaxed text-ink-muted">
+      A few constraints sit at the center of the design, and they're non-negotiable in the codebase:
+    </p>
+    <ul class="mt-5 space-y-3">
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">01</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Scanning is read-only.</span> Inventory and discovery never touch the system.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">02</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Matching is deterministic</span> and is the sole authority on compatibility — no heuristic guessing.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">03</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Unknown evidence stays unknown.</span> A missing candidate, an unavailable source, and an incompatible candidate are never treated as the same thing.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">04</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Discovery never implies installation.</span> Finding a package doesn't mean downloading or installing it.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">05</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Installation requires explicit confirmation</span> — elevation, validation, device rechecks, and transaction guards, every time.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">06</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">No automatic reboots, bulk unattended installs, or arbitrary package execution</span> — ever.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">07</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">No AI, LLM, or ML service</span> inside the running engine — compatibility and update decisions are deterministic, not inferred.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ===== STATUS ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Honest status</h2>
+    <p class="mt-4 leading-relaxed text-ink-muted">
+      I'd rather this page undersell the project than oversell it. Here's what's actually working
+      and what's still open:
+    </p>
+
+    <div class="mt-6 grid gap-6 sm:grid-cols-2">
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[11px] uppercase tracking-wider text-green">Implemented</p>
+        <ul class="mt-3 space-y-2 text-sm text-ink-muted">
+          <li>• Raw &amp; normalized Windows hardware inventory (versioned JSON)</li>
+          <li>• Deterministic driver matching (hardware/compatible IDs, OS, architecture)</li>
+          <li>• Separate decision and metadata-only intelligence stages</li>
+          <li>• Windows Update Agent discovery via an isolated worker process</li>
+          <li>• HTTPS download policy, hashing, INF &amp; catalog signature validation</li>
+          <li>• Explicit <code class="text-ink">pnputil</code>-based install for validated packages</li>
+          <li>• Application inventory, WinGet discovery, MSI-only install</li>
+          <li>• WPF dashboard with audit trail and JSON export</li>
+        </ul>
+      </div>
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[11px] uppercase tracking-wider text-amber">Research / incomplete</p>
+        <ul class="mt-3 space-y-2 text-sm text-ink-muted">
+          <li>• General rollback: no implementation claimed — fails closed as <code class="text-ink">RollbackUnavailable</code></li>
+          <li>• Microsoft Catalog &amp; Lenovo sources: intentionally unavailable, no endpoint configured</li>
+          <li>• WUA metadata is limited — missing data is never guessed</li>
+          <li>• WinGet install path is report-only; install engine stays MSI-only for now</li>
+          <li>• Real-machine WUA install/signature checks need a disposable elevated Windows box</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ARCHITECTURE ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Repository layout</h2>
+    <div class="mt-6 overflow-hidden rounded-md border border-line">
+      <table class="w-full border-collapse text-left text-sm">
+        <tbody>
+          <tr class="border-b border-line bg-bg-panel">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">src/SmartUpdate.Engine</td>
+            <td class="px-4 py-3 text-ink-muted">Inventory, discovery, matching, decisions, acquisition, installation, recovery, applications, orchestration</td>
+          </tr>
+          <tr class="border-b border-line">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">src/SmartUpdate.Cli</td>
+            <td class="px-4 py-3 text-ink-muted">Read-only scan/plan commands plus explicit transaction commands</td>
+          </tr>
+          <tr class="border-b border-line bg-bg-panel">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">src/SmartUpdate.Gui</td>
+            <td class="px-4 py-3 text-ink-muted">WPF presentation layer</td>
+          </tr>
+          <tr class="border-b border-line">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">src/SmartUpdate.WuaWorker</td>
+            <td class="px-4 py-3 text-ink-muted">Isolated Windows Update Agent process</td>
+          </tr>
+          <tr class="bg-bg-panel">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">tests/SmartUpdate.Engine.Tests</td>
+            <td class="px-4 py-3 text-ink-muted">Unit &amp; presentation tests using fakes and in-memory providers</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== BUILD ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Build &amp; run</h2>
+    <p class="mt-4 text-sm text-ink-muted">Requires Windows and the .NET 10 SDK pinned in <code class="text-ink">global.json</code>.</p>
+    <div class="mt-4 rounded-md border border-line bg-bg-panel p-5 font-mono text-[13px] leading-7 text-ink-muted">
+      <p><span class="text-green">$</span> dotnet restore SmartUpdate.Engine.sln</p>
+      <p><span class="text-green">$</span> dotnet build SmartUpdate.Engine.sln --configuration Release</p>
+      <p><span class="text-green">$</span> dotnet test SmartUpdate.Engine.sln --configuration Release</p>
+      <p class="mt-3 text-ink-faint"># read-only commands — never download or install anything</p>
+      <p><span class="text-green">$</span> dotnet run --project src\SmartUpdate.Cli -- scan</p>
+      <p><span class="text-green">$</span> dotnet run --project src\SmartUpdate.Cli -- app-scan</p>
+      <p><span class="text-green">$</span> dotnet run --project src\SmartUpdate.Cli -- plan --output plan.json</p>
+    </div>
+  </section>
+
+  <!-- ===== STACK ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Stack</h2>
+    <div class="mt-5 flex flex-wrap gap-2.5">
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">C#</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">.NET 10</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">WPF</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">Windows Update Agent</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">pnputil</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">WinGet</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">xUnit</span>
+      <span class="rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">GitHub Actions CI</span>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section class="mt-16 flex flex-col items-start gap-4 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-sm text-ink-muted">The full source, docs, and roadmap are on GitHub.</p>
+    <div class="flex flex-wrap gap-3">
+      <a href="https://github.com/GLORY-2016/SmartUpdate" target="_blank" rel="noopener noreferrer"
+         class="inline-flex items-center gap-2 rounded-sm bg-amber px-5 py-2.5 font-mono text-sm font-semibold text-bg transition hover:bg-amber/90">
+        view_on_github →
+      </a>
+      <a href="../index.html#projects"
+         class="inline-flex items-center gap-2 rounded-sm border border-line px-5 py-2.5 font-mono text-sm text-ink transition hover:border-amber-dim hover:text-amber">
+        ← back_to_portfolio
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="border-t border-line">
+  <div class="mx-auto max-w-4xl px-5 py-10 text-center sm:px-8">
+    <p class="font-mono text-[12px] text-ink-faint">© 2026 Oussema Nouri</p>
+  </div>
+</footer>
+
+<!-- Google Analytics 4 — same property as the main site -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LS1FVM0YWZ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LS1FVM0YWZ');
+</script>
+
+</body>
+</html>
